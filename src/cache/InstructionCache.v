@@ -6,10 +6,10 @@ module InstuctionCache #(
     input wire rst_in,
     input wire rdy_in,
 
-    input  wire [31:0] addr, 
+    input  wire [31:0] addr,  // the last 2 bit should be 0
     output wire        hit,
     output wire [31:0] res,
-    input  wire        we,  
+    input  wire        we,    // write enable
     input  wire [31:0] data
 );
 
@@ -36,7 +36,7 @@ module InstuctionCache #(
             end
         end
         else if (!rdy_in) begin
-            
+            // do nothing
         end
         else if (we) begin
             exist[index] <= 1;

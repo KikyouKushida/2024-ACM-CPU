@@ -1,47 +1,48 @@
 `include "const.v"
-module InstuctionCache #(
-    parameter Bit = `ICACHE_SIZE_BIT
-) (
-    input wire clk_in,
-    input wire rst_in,
-    input wire rdy_in,
 
-    input  wire [31:0] addr,  // the last 2 bit should be 0
-    output wire        hit,
-    output wire [31:0] res,
-    input  wire        we,    // write enable
-    input  wire [31:0] data
+module InstuctionCache #(
+    parameter int CacheBits = ICACHE_SIZE_BIT
+) (
+    input  wire clk_in,
+    input  wire rst_in,
+    input  wire rdy_in,
+
+    input  wire [31:0] addr,
+    output wire hit,
+    output wire [31:0] data_out,
+    input  wire write_enable,
+    input  wire [31:0] write_data
 );
 
-    localparam SIZE = 1 << Bit;
-    localparam TagBit = 32 - 2 - Bit;
+    localparam int CacheSize = 1 << CacheBits;
+    localparam int TagWidth = 30 - CacheBits;
 
-    wire [TagBit - 1:0] tag = addr[31:2+Bit];
-    wire [ Bit - 1 : 0] index = addr[2+Bit-1:2];
+    wire [TagWidth-1:0] addr_tag = addr[31:2+CacheBits];
+    wire [CacheBits-1:0] addr_index = addr[2+CacheBits-1:2];
 
-    reg                 exist                   [0 : SIZE-1];
-    reg  [        31:0] buff                    [0 : SIZE-1];
-    reg  [TagBit - 1:0] tags                    [0 : SIZE-1];
+    reg [CacheSize-1:0] entry_valid;
+    reg [31:0] data_store [CacheSize-1:0];
+    reg [TagWidth-1:0] tag_store [CacheSize-1:0];
 
-    assign hit = exist[index] && tags[index] == tag;
-    assign res = buff[index];
+    assign hit = entry_valid[addr_index] && (tag_store[addr_index] == addr_tag);
+    assign data_out = data_store[addr_index];
 
     always @(posedge clk_in) begin
-        if (rst_in) begin : RESET
+        if (rst_in) begin
             integer i;
-            for (i = 0; i < SIZE; i = i + 1) begin
-                buff[i]  <= 0;
-                tags[i]  <= 0;
-                exist[i] <= 0;
+            for (i = 0; i < CacheSize; i = i + 1) begin
+                entry_valid[i] <= 0;
+                data_store[i] <= 0;
+                tag_store[i] <= 0;
             end
         end
         else if (!rdy_in) begin
             // do nothing
         end
-        else if (we) begin
-            exist[index] <= 1;
-            buff[index]  <= data;
-            tags[index]  <= tag;
+        else if (write_enable) begin
+            entry_valid[addr_index] <= 1;
+            data_store[addr_index] <= write_data;
+            tag_store[addr_index] <= addr_tag;
         end
     end
 
